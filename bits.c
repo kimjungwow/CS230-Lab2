@@ -2,7 +2,7 @@
  * CS:APP Data Lab 
  * 
  * <Please put your name and userid here>
- * 
+ *  KimJungwoo cs20140681
  * bits.c - Source file with your solutions to the Lab.
  *          This is the file you will hand in to your instructor.
  *
@@ -129,7 +129,6 @@ NOTES:
  *      the correct answers.
  */
 
-
 #endif
 /* Copyright (C) 1991-2014 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
@@ -170,8 +169,9 @@ NOTES:
  *   Max ops: 8
  *   Rating: 1
  */
-int bitAnd(int x, int y) {
-  return 2;
+int bitAnd(int x, int y)
+{
+  return ~((~x) | (~y));
 }
 /* 
  * getByte - Extract byte n from word x
@@ -181,19 +181,23 @@ int bitAnd(int x, int y) {
  *   Max ops: 6
  *   Rating: 2
  */
-int getByte(int x, int n) {
-  return 2;
+int getByte(int x, int n)
+{
+  return ((x >> ((n) << (3))) & 255);
 }
 /* 
  * logicalShift - shift x to the right by n, using a logical shift
  *   Can assume that 0 <= n <= 31
- *   Examples: logicalShift(0x87654321,4) = 0x08765432
+ *   Examples: logicalShift(0x87654321,4) = 0x0876  5432
  *   Legal ops: ! ~ & ^ | + << >>
  *   Max ops: 20
  *   Rating: 3 
  */
-int logicalShift(int x, int n) {
-  return 2;
+int logicalShift(int x, int n)
+{
+
+  int LOGSHIFT = ~(((!!n) << 31) >> (n - 1));
+  return (x >> n) & LOGSHIFT;
 }
 /*
  * bitCount - returns count of number of 1's in word
@@ -202,8 +206,16 @@ int logicalShift(int x, int n) {
  *   Max ops: 40
  *   Rating: 4
  */
-int bitCount(int x) {
-  return 2;
+int bitCount(int x)
+{
+  int count = 0x11111111, count2=0x07070707;
+  int check=(x&count) +  ((x>>1)&count) + ((x>>2)&count) + ((x>>3)&count);
+  int check2= (check&count2) + ((check>>4)&count2);
+  int man= (check2&15) + ((check2>>8)&15) + ((check2>>16)&15) + ((check2>>24)&15);
+  
+  return man;
+
+  // return 1;
 }
 /* 
  * bang - Compute !x without using !
@@ -212,7 +224,12 @@ int bitCount(int x) {
  *   Max ops: 12
  *   Rating: 4 
  */
-int bang(int x) {
+int bang(int x)
+{
+  /*return 
+
+  int count = 0x11111111, count2=0x07070707;
+  int check=(x&count) +  ((x>>1)&count) + ((x>>2)&count) + ((x>>3)&count);*/
   return 2;
 }
 /* 
@@ -221,8 +238,9 @@ int bang(int x) {
  *   Max ops: 4
  *   Rating: 1
  */
-int tmin(void) {
-  return 2;
+int tmin(void)
+{
+  return (1 << 31);
 }
 /* 
  * fitsBits - return 1 if x can be represented as an 
@@ -233,8 +251,14 @@ int tmin(void) {
  *   Max ops: 15
  *   Rating: 2
  */
-int fitsBits(int x, int n) {
-  return 2;
+int fitsBits(int x, int n)
+{
+
+  
+
+
+   return 2; 
+      // (  ( (   (         (((x<<2) >>n)&1)   ^ (( (x<<1) >>n)&1)  ) | ((n>>5)&1) ) & (!!(n-1))   ) | !x  )  ;
 }
 /* 
  * divpwr2 - Compute x/(2^n), for 0 <= n <= 30
@@ -244,8 +268,9 @@ int fitsBits(int x, int n) {
  *   Max ops: 15
  *   Rating: 2
  */
-int divpwr2(int x, int n) {
-    return 2;
+int divpwr2(int x, int n)
+{
+  return 2;
 }
 /* 
  * negate - return -x 
@@ -254,8 +279,9 @@ int divpwr2(int x, int n) {
  *   Max ops: 5
  *   Rating: 2
  */
-int negate(int x) {
-  return 2;
+int negate(int x)
+{
+  return (~x)+1;
 }
 /* 
  * isPositive - return 1 if x > 0, return 0 otherwise 
@@ -264,8 +290,10 @@ int negate(int x) {
  *   Max ops: 8
  *   Rating: 3
  */
-int isPositive(int x) {
-  return 2;
+int isPositive(int x)
+{
+  return  (!!x) & (!((x>>31)&1) );
+  // return 2;
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -274,7 +302,8 @@ int isPositive(int x) {
  *   Max ops: 24
  *   Rating: 3
  */
-int isLessOrEqual(int x, int y) {
+int isLessOrEqual(int x, int y)
+{
   return 2;
 }
 /*
@@ -284,7 +313,8 @@ int isLessOrEqual(int x, int y) {
  *   Max ops: 90
  *   Rating: 4
  */
-int ilog2(int x) {
+int ilog2(int x)
+{
   return 2;
 }
 /* 
@@ -298,8 +328,9 @@ int ilog2(int x) {
  *   Max ops: 10
  *   Rating: 2
  */
-unsigned float_neg(unsigned uf) {
- return 2;
+unsigned float_neg(unsigned uf)
+{
+  return 2;
 }
 /* 
  * float_i2f - Return bit-level equivalent of expression (float) x
@@ -310,7 +341,8 @@ unsigned float_neg(unsigned uf) {
  *   Max ops: 30
  *   Rating: 4
  */
-unsigned float_i2f(int x) {
+unsigned float_i2f(int x)
+{
   return 2;
 }
 /* 
@@ -324,6 +356,7 @@ unsigned float_i2f(int x) {
  *   Max ops: 30
  *   Rating: 4
  */
-unsigned float_twice(unsigned uf) {
+unsigned float_twice(unsigned uf)
+{
   return 2;
 }
