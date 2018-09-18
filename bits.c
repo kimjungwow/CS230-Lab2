@@ -196,7 +196,8 @@ int getByte(int x, int n)
 int logicalShift(int x, int n)
 {
 
-  int LOGSHIFT = ~(((!!n) << 31) >> (n - 1));
+  int LOGSHIFT = ~((((!!n) << 31) >> (n)) << 1);
+
   return (x >> n) & LOGSHIFT;
 }
 /*
@@ -208,14 +209,9 @@ int logicalShift(int x, int n)
  */
 int bitCount(int x)
 {
-  int count = 0x11111111, count2=0x07070707;
-  int check=(x&count) +  ((x>>1)&count) + ((x>>2)&count) + ((x>>3)&count);
-  int check2= (check&count2) + ((check>>4)&count2);
-  int man= (check2&15) + ((check2>>8)&15) + ((check2>>16)&15) + ((check2>>24)&15);
-  
-  return man;
-
-  // return 1;
+  int oh = 1 + (1 << 8) + (1 << 16) + (1 << 24);
+  int gogo = (x & oh) + ((x >> 1) & oh) + ((x >> 2) & oh) + ((x >> 3) & oh) + ((x >> 4) & oh) + ((x >> 5) & oh) + ((x >> 6) & oh) + ((x >> 7) & oh);
+  return ((gogo + (gogo >> 8) + (gogo >> 16) + (gogo >> 24)) & 63);
 }
 /* 
  * bang - Compute !x without using !
@@ -226,11 +222,15 @@ int bitCount(int x)
  */
 int bang(int x)
 {
+  int sig = (x >> 31) & 1;
+  return (~sig) & (~(sig ^ ((((~x) + 1) >> 31) & 1))) & 1;
+  //  return  ((~(x>>31))&1) & (~( ((x^ ( (~x)+1 )))&1));
+
   /*return 
 
   int count = 0x11111111, count2=0x07070707;
   int check=(x&count) +  ((x>>1)&count) + ((x>>2)&count) + ((x>>3)&count);*/
-  return 2;
+  // return 2;
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -251,14 +251,29 @@ int tmin(void)
  *   Max ops: 15
  *   Rating: 2
  */
+
 int fitsBits(int x, int n)
 {
+  int z= (1<<31);
+  int k=x&z;
+  int to= (1<< (n+(~0))  );
+ 
+  return
 
-  
+      ((n>>5)&1) |
+        // (!x) |
+      
+      (    (!((k)&(  ( to + (~x)) & z  )))
+      // (   (!(  ( ( (1 << n) >> 1) + (~x)) & z  ) )   
 
 
-   return 2; 
-      // (  ( (   (         (((x<<2) >>n)&1)   ^ (( (x<<1) >>n)&1)  ) | ((n>>5)&1) ) & (!!(n-1))   ) | !x  )  ;
+      |         (!  (!(k))&(  (to + (x)) & z  ) )
+
+      
+      // & (!(  (((1 << n) >> 1) + (x)) & (0x80000000)  ) )
+
+
+      );
 }
 /* 
  * divpwr2 - Compute x/(2^n), for 0 <= n <= 30
@@ -270,8 +285,11 @@ int fitsBits(int x, int n)
  */
 int divpwr2(int x, int n)
 {
-  return 2;
+  int semi = x >> n;
+  semi = semi + ((!!((semi << n) + (~x) + 1)) & ((x >> 31) & 1));
+  return semi;
 }
+
 /* 
  * negate - return -x 
  *   Example: negate(1) = -1.
@@ -281,7 +299,7 @@ int divpwr2(int x, int n)
  */
 int negate(int x)
 {
-  return (~x)+1;
+  return (~x) + 1;
 }
 /* 
  * isPositive - return 1 if x > 0, return 0 otherwise 
@@ -292,7 +310,7 @@ int negate(int x)
  */
 int isPositive(int x)
 {
-  return  (!!x) & (!((x>>31)&1) );
+  return (!!x) & (!((x >> 31) & 1));
   // return 2;
 }
 /* 
@@ -304,7 +322,17 @@ int isPositive(int x)
  */
 int isLessOrEqual(int x, int y)
 {
-  return 2;
+  int l = !(x ^ y);
+  int xx = (x >> 31) & 1;
+  int yy = (y >> 31) & 1;
+
+  int z = x + (~(y)) + 1;
+  int a = ((z >> 31) & 1);
+
+  int sa = !((xx ^ yy) & xx);
+  int s = !((xx ^ yy) & yy);
+
+  return ((!sa) | (s & (l | (!(a ^ s)))));
 }
 /*
  * ilog2 - return floor(log base 2 of x), where x > 0
@@ -315,6 +343,8 @@ int isLessOrEqual(int x, int y)
  */
 int ilog2(int x)
 {
+    
+
   return 2;
 }
 /* 
@@ -328,9 +358,20 @@ int ilog2(int x)
  *   Max ops: 10
  *   Rating: 2
  */
+
 unsigned float_neg(unsigned uf)
 {
-  return 2;
+
+  if ((((uf >> 23) & 255) != 255) | (!(uf & 0x7fffff)))
+  {
+
+    unsigned tempuf;
+    tempuf = (0x7fffffff & uf) + (0x80000000 & (~uf));
+
+    return tempuf;
+  }
+
+  return uf;
 }
 /* 
  * float_i2f - Return bit-level equivalent of expression (float) x
@@ -343,6 +384,60 @@ unsigned float_neg(unsigned uf)
  */
 unsigned float_i2f(int x)
 {
+
+  printf(" Let's start %02x \n", x);
+  int k = 30, i, sticky = 0, y = x, sign = ((x >> 31) & 1);
+
+  // if (x==0xfefffffe) { return 0xcb800001;}
+  if (!x)
+  {
+    return 0;
+  }
+  if (sign)
+  {
+    y = (~x);
+  }
+  while (((y >> k) & 1) == 0)
+  {
+    k--;
+    if (k == 0)
+
+      break;
+  }
+  i = k;
+  k -= 1;
+  printf("I is %d\n", i);
+  if (i < 23)
+  {
+    // printf("Answer is %02x\n", (((((sign << 8) + 127 + i) << i) + (x & ((1 << i) - 1))) << (23 - i)));
+    return (((((sign << 8) + 127 + i) << i) + (x & ((1 << i) - 1))) << (23 - i));
+
+    // return (  ( (((sign<<8)&0x100) + 127+i) <<i) +   (x& ((1<<i)-1)) <<(23-i)  ) ;
+  }
+  else
+  {
+    int man = i - 25;
+    int woman = (y >> (i - 24 + sign)) & 1;
+
+    while ((man >= 0) && (sticky == 0))
+    {
+      if (((y >> man) & 1) == 1)
+      {
+        sticky = 1;
+        break;
+      }
+      man -= 1;
+    }
+    printf("Sticky is %d and woman is %d I 'll add %d\n", sticky, woman, (sticky & woman));
+
+    if ((i == 24) && (((y & 1) == 1) && (((y & 0xffffff) >> 8) == 0)))
+    {
+      return ((((sign << 8) + 127 + i) << 23) + ((y >> (i - 23)) & 0x7fffff) + sticky);
+    }
+
+    return ((((sign << 8) + 127 + i) << 23) + ((y >> (i - 23)) & 0x7fffff) + (sticky & woman));
+  };
+
   return 2;
 }
 /* 
@@ -358,5 +453,6 @@ unsigned float_i2f(int x)
  */
 unsigned float_twice(unsigned uf)
 {
+
   return 2;
 }
