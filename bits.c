@@ -207,6 +207,7 @@ int logicalShift(int x, int n)
  *   Max ops: 40
  *   Rating: 4
  */
+
 int bitCount(int x)
 {
   int oh = 1 + (1 << 8) + (1 << 16) + (1 << 24);
@@ -224,13 +225,6 @@ int bang(int x)
 {
   int sig = (x >> 31) & 1;
   return (~sig) & (~(sig ^ ((((~x) + 1) >> 31) & 1))) & 1;
-  //  return  ((~(x>>31))&1) & (~( ((x^ ( (~x)+1 )))&1));
-
-  /*return 
-
-  int count = 0x11111111, count2=0x07070707;
-  int check=(x&count) +  ((x>>1)&count) + ((x>>2)&count) + ((x>>3)&count);*/
-  // return 2;
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -254,24 +248,30 @@ int tmin(void)
 
 int fitsBits(int x, int n)
 {
-  int z= (1<<31);
-  int k=x&z;
-  int to= (1<< (n+(~0))  );
- 
+  if ((x==0x80000000)&&(n<32)) {return 0; }
+  printf("x>>n is %02x and %02x %02x\n", ((x>>1)>>(n-1) ), (0xffff>>1), (0x80000000>>32) );
+  return   !( (x>>1)>> (n-1) ) | !(~(   (x>>1) >> (n-1) ));
+  
+  //Now,  number of letter == n is incorrect (except sign)
+}
+
+int XfitsBits(int x, int n)
+{
+  int z = (1 << 31);
+  int k = x & z;
+  int to = (1 << (n + (~0)));
+
   return
 
-      ((n>>5)&1) |
-        // (!x) |
-      
-      (    (!((k)&(  ( to + (~x)) & z  )))
-      // (   (!(  ( ( (1 << n) >> 1) + (~x)) & z  ) )   
+      ((n >> 5) & 1) |
+      // (!x) |
 
+      ((!((k) & ((to + (~x)) & z)))
+       // (   (!(  ( ( (1 << n) >> 1) + (~x)) & z  ) )
 
-      |         (!  (!(k))&(  (to + (x)) & z  ) )
+       | (!(!(k)) & ((to + (x)) & z))
 
-      
-      // & (!(  (((1 << n) >> 1) + (x)) & (0x80000000)  ) )
-
+       // & (!(  (((1 << n) >> 1) + (x)) & (0x80000000)  ) )
 
       );
 }
@@ -343,7 +343,6 @@ int isLessOrEqual(int x, int y)
  */
 int ilog2(int x)
 {
-    
 
   return 2;
 }
@@ -364,13 +363,10 @@ unsigned float_neg(unsigned uf)
 
   if ((((uf >> 23) & 255) != 255) | (!(uf & 0x7fffff)))
   {
-
     unsigned tempuf;
     tempuf = (0x7fffffff & uf) + (0x80000000 & (~uf));
-
     return tempuf;
   }
-
   return uf;
 }
 /* 
@@ -382,68 +378,84 @@ unsigned float_neg(unsigned uf)
  *   Max ops: 30
  *   Rating: 4
  */
+
 unsigned float_i2f(int x)
 {
-
-  printf(" Let's start %02x \n", x);
-  int k = 30, i, sticky = 0, y = x, sign = ((x >> 31) & 1);
-
-  // if (x==0xfefffffe) { return 0xcb800001;}
+  int sign, where;
+  unsigned y, z, sticky, where24, mantissa, ans;
   if (!x)
   {
-    return 0;
+    return x;
   }
-  if (sign)
+  where = 31;
+  sign = 0;
+  y = x;
+  if (x < 0)
   {
-    y = (~x);
-  }
-  while (((y >> k) & 1) == 0)
-  {
-    k--;
-    if (k == 0)
+    sign = 1;
 
+    y = -x;
+  }
+
+  z = y;
+  while (!(z & 0x80000000))
+  {
+    where--;
+    z = z << 1;
+  }
+  sticky = 0;
+  where24 = where - 24;
+
+  if (where > 23)
+  {
+
+    unsigned atob = (y >> where24) & 3;
+    switch (atob)
+    {
+    case 1:
+    {
+
+      if (where > 24)
+      {
+        int whereindex;
+        for (whereindex = 0; whereindex < where24; whereindex++)
+        {
+          if ((y >> whereindex) & 1)
+          {
+            sticky = 1;
+            break;
+          }
+        }
+      }
       break;
-  }
-  i = k;
-  k -= 1;
-  printf("I is %d\n", i);
-  if (i < 23)
-  {
-    // printf("Answer is %02x\n", (((((sign << 8) + 127 + i) << i) + (x & ((1 << i) - 1))) << (23 - i)));
-    return (((((sign << 8) + 127 + i) << i) + (x & ((1 << i) - 1))) << (23 - i));
+    }
+    case 3:
+    {
 
-    // return (  ( (((sign<<8)&0x100) + 127+i) <<i) +   (x& ((1<<i)-1)) <<(23-i)  ) ;
+      sticky = 1;
+      break;
+    }
+
+    default:
+      break;
+    }
+    mantissa = (((y >> (where - 23)) & (0x7fffff)) + sticky);
   }
   else
   {
-    int man = i - 25;
-    int woman = (y >> (i - 24 + sign)) & 1;
 
-    while ((man >= 0) && (sticky == 0))
-    {
-      if (((y >> man) & 1) == 1)
-      {
-        sticky = 1;
-        break;
-      }
-      man -= 1;
-    }
-    printf("Sticky is %d and woman is %d I 'll add %d\n", sticky, woman, (sticky & woman));
+    mantissa = ((y & ((1 << where) - 1)) << (23 - where));
+  }
 
-    if ((i == 24) && (((y & 1) == 1) && (((y & 0xffffff) >> 8) == 0)))
-    {
-      return ((((sign << 8) + 127 + i) << 23) + ((y >> (i - 23)) & 0x7fffff) + sticky);
-    }
+  ans = (sign << 31) + ((127 + where) << 23) + mantissa;
 
-    return ((((sign << 8) + 127 + i) << 23) + ((y >> (i - 23)) & 0x7fffff) + (sticky & woman));
-  };
-
-  return 2;
+  return ans;
 }
+
 /* 
  * float_twice - Return bit-level equivalent of expression 2*f for
  *   floating point argument f.
- *   Both the argument and result are passed as unsigned int's, but
+ *   Both the argume*nt and result are passed as unsigned int's, but
  *   they are to be interpreted as the bit-level representation of
  *   single-precision floating point values.
  *   When argument is NaN, return argument
@@ -453,6 +465,23 @@ unsigned float_i2f(int x)
  */
 unsigned float_twice(unsigned uf)
 {
+  unsigned expp, mantissa;
+  if ((uf & 0x7fffffff) == 0)
+  {
+    return uf;
+  }
 
-  return 2;
+  expp = (uf >> 23) & 0xff;
+  mantissa = uf & 0x7fffff;
+
+  if (expp == 0xff)
+  {
+    return uf;
+  }
+  if (expp == 0)
+  {
+    return uf + mantissa;
+  }
+
+  return uf + (1 << 23);
 }
