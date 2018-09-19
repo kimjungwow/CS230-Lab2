@@ -306,6 +306,7 @@ int isLessOrEqual(int x, int y)
   int l = !(x ^ y);
   int xx = (x >> 31) & 1;
   int yy = (y >> 31) & 1;
+  
 
   int z = x + (~(y)) + 1;
   int a = ((z >> 31) & 1);
@@ -324,9 +325,51 @@ int isLessOrEqual(int x, int y)
  */
 int ilog2(int x)
 {
+  int oh,gogo,total;
+  x= x|(x>>16);
+  x= x|(x>>8);
+  x= x|(x>>4);
+  x= x|(x>>2);
+  x= x|(x>>1);
+  
+  oh = 1 + (1 << 8) + (1 << 16) + (1 << 24);
+  gogo = (x & oh) + ((x >> 1) & oh) + ((x >> 2) & oh) + ((x >> 3) & oh) + ((x >> 4) & oh) + ((x >> 5) & oh) + ((x >> 6) & oh) + ((x >> 7) & oh);
+  total= ((gogo + (gogo >> 8) + (gogo >> 16) + (gogo >> 24)) & 63) ;
+  return total+total+(~total);
+
+  
+  
+
+}
+/*
+int XXilog2(int x)
+{
+  int first,second,third,fourth,total;
+  first= ((x>>24)&0xff)<<24 ;
+  first= (first>>4) | first;
+  first= (first>>2) | first;
+  first= (first>>1) | first;
+  first= first&(0xff<<24);
+  second= (((x>>16)&0xff)<<16) | (first>>8) ;
+  second= (second>>4) | second;
+  second= (second>>2) | second;
+  second= (second>>1) | second;
+  second=second&(0xff<<16);
+  third= (((x>>8)&0xff)<<8) | (second>>8);
+  third=(third>>4) | third;
+  third=(third>>2) | third;
+  third=(third>>1) | third;
+  third=third&(0xff<<8);
+  fourth=(x&0xff) | (third>>8);
+  fourth= (fourth>>4)|fourth;
+  fourth= (fourth>>2)|fourth;
+  fourth= (fourth>>1)|fourth;
+  total=first+second+third+fourth;
+  printf("%02x %02x %02x %02x and total %02x\n",first,second,third,fourth,first+second+third+fourth);
+
 
   return 2;
-}
+}*/
 /* 
  * float_neg - Return bit-level equivalent of expression -f for
  *   floating point argument f.
