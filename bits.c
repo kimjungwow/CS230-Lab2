@@ -248,33 +248,14 @@ int tmin(void)
 
 int fitsBits(int x, int n)
 {
-  if ((x==0x80000000)&&(n<32)) {return 0; }
-  printf("x>>n is %02x and %02x %02x\n", ((x>>1)>>(n-1) ), (0xffff>>1), (0x80000000>>32) );
-  return   !( (x>>1)>> (n-1) ) | !(~(   (x>>1) >> (n-1) ));
-  
-  //Now,  number of letter == n is incorrect (except sign)
+  int m;
+  m= n+n+(~n);
+
+
+return   !( x>>(m) ) | !(~( (x>> (m) )));  
+
 }
 
-int XfitsBits(int x, int n)
-{
-  int z = (1 << 31);
-  int k = x & z;
-  int to = (1 << (n + (~0)));
-
-  return
-
-      ((n >> 5) & 1) |
-      // (!x) |
-
-      ((!((k) & ((to + (~x)) & z)))
-       // (   (!(  ( ( (1 << n) >> 1) + (~x)) & z  ) )
-
-       | (!(!(k)) & ((to + (x)) & z))
-
-       // & (!(  (((1 << n) >> 1) + (x)) & (0x80000000)  ) )
-
-      );
-}
 /* 
  * divpwr2 - Compute x/(2^n), for 0 <= n <= 30
  *  Round toward zero
