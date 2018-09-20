@@ -171,6 +171,9 @@ NOTES:
  */
 int bitAnd(int x, int y)
 {
+  // Using De Morgan's Law
+  // X AND Y =  NOT ( (NOT X)  OR (NOT Y) )
+  // We can make NOT with bitwise operator ~
   return ~((~x) | (~y));
 }
 /* 
@@ -183,6 +186,11 @@ int bitAnd(int x, int y)
  */
 int getByte(int x, int n)
 {
+  // If we want to MSB, we have to shift to right 3 Bytes (24 bits)
+  // we make 24 with (3 <<3) because 24 = 11000 = ((11)<<3)
+  // 2Bytes=16Bits is 16 = 10000 = (10)<<3 and 1Byte=8Bits is 8=1000 = (1)<<3
+  // And we don't want to be affected by unwanted 1s from arithmetic shift,
+  // so we use "& 255" to take only last 8bits
   return ((x >> ((n) << (3))) & 255);
 }
 /* 
@@ -195,6 +203,10 @@ int getByte(int x, int n)
  */
 int logicalShift(int x, int n)
 {
+  // Basic right shift in C is arithmetic shift,
+  // so we have to deal with unwanted 1s in left of result
+  // There would be n wanted 1s or not.
+  // So we will take only last (32-n) bits of result using bitwise & and LOGSHIFT
 
   int LOGSHIFT = ~((((!!n) << 31) >> (n)) << 1);
 
@@ -210,9 +222,18 @@ int logicalShift(int x, int n)
 
 int bitCount(int x)
 {
-  int oh = 1 + (1 << 8) + (1 << 16) + (1 << 24);
-  int gogo = (x & oh) + ((x >> 1) & oh) + ((x >> 2) & oh) + ((x >> 3) & oh) + ((x >> 4) & oh) + ((x >> 5) & oh) + ((x >> 6) & oh) + ((x >> 7) & oh);
-  return ((gogo + (gogo >> 8) + (gogo >> 16) + (gogo >> 24)) & 63);
+  // We will deal with each byte first using DIVIDE AND CONQUER Algorithm
+  // Make basis for dealing with each byte, it just recursively add 0x01
+  int basis = 1 + (1 << 8) + (1 << 16) + (1 << 24);
+
+  // Then we will calculate number of 1's in each byte
+  // and save it in the last bit of each byte.
+
+  int sum = (x & basis) + ((x >> 1) & basis) + ((x >> 2) & basis) + ((x >> 3) & basis) + ((x >> 4) & basis) + ((x >> 5) & basis) + ((x >> 6) & basis) + ((x >> 7) & basis);
+
+  // Now we add all last bits of all bytes.
+  // We have to concentrate on last 7 bits because there couldn't be more than 32 1's.
+  return ((sum + (sum >> 8) + (sum >> 16) + (sum >> 24)) & 63);
 }
 /* 
  * bang - Compute !x without using !
@@ -223,8 +244,21 @@ int bitCount(int x)
  */
 int bang(int x)
 {
+  //We want to return 1 when x is 0, otherwise return 1.
+  //For all x!=0, x!=-x, but x=-x for x=0
+  //So I'll return 1 if x=-x, especially using signs of x and -x
+
+  //Get the sign of x
   int sig = (x >> 31) & 1;
-  return (~sig) & (~(sig ^ ((((~x) + 1) >> 31) & 1))) & 1;
+
+  // Since x+(~x)+1=0, -x=(~x)+1. 
+  // I can get the sign of -x with ( ( ((~x) + 1) >> 31) & 1)
+  // If signs of x and -x are different, bitwise operator ^ of them would be 1.
+  // At that time, we have to return 0, I use ~ operator to make 1 to 0,
+  // and use & operator to make return value 0.
+  // And vice varsa
+
+  return (~sig) & ( (~(sig ^ ( ( ((~x) + 1) >> 31) & 1) )) & 1);
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -234,6 +268,7 @@ int bang(int x)
  */
 int tmin(void)
 {
+  //I shoud return 0x80000000
   return (1 << 31);
 }
 /* 
@@ -248,12 +283,21 @@ int tmin(void)
 
 int fitsBits(int x, int n)
 {
-  int m;
-  m= n+n+(~n);
+  // If x is positive, it would look like 00000101110.....
+  // We have to catch index of first 1 is smaller than n-1
+  // We should think n-1 because one 0 in front of first 1 is also part of x
+  // We can check it with (x>> (n-1)) is all 0 bits
 
+  // If x is negative, it would look like 111101101....
+  // We have to catch index of first 0 is smaller than n-1
+  // We can check it with (x>> (n-1)) is all 1 bits
 
-return   !( x>>(m) ) | !(~( (x>> (m) )));  
+  // To use n-1, I use fact that n+(~n)+1=0
 
+  int m; 
+  m = n + n + (~n); //m=n-1
+
+  return !(x >> (m)) | !(~((x >> (m))));
 }
 
 /* 
@@ -266,6 +310,10 @@ return   !( x>>(m) ) | !(~( (x>> (m) )));
  */
 int divpwr2(int x, int n)
 {
+  // x>>n is doing well with positive x
+  // When x is negative, rounding toward zero is different.
+  //So we have to add remainder if it existed
+
   int semi = x >> n;
   semi = semi + ((!!((semi << n) + (~x) + 1)) & ((x >> 31) & 1));
   return semi;
@@ -280,6 +328,7 @@ int divpwr2(int x, int n)
  */
 int negate(int x)
 {
+  //Using fact x+(~x)+1=0
   return (~x) + 1;
 }
 /* 
@@ -291,8 +340,11 @@ int negate(int x)
  */
 int isPositive(int x)
 {
+  //Check first bit of x with ((x >> 31) & 1)
+  // But we have to deal with zero
+  // So I use (!!x)
   return (!!x) & (!((x >> 31) & 1));
-  // return 2;
+  
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -303,10 +355,15 @@ int isPositive(int x)
  */
 int isLessOrEqual(int x, int y)
 {
+  // Just checking x-y<=0 isn't enough
+  // We have to check positive/negative overflow
+  // But overflow exist only whenever signs of two arguments are different
+  // (!sa) is when x>=0 and y<0, always x>y
+  // s is to deal with x<0 and y>=0
+  // I also check whether x and y are same or not using !(x^y)
   int l = !(x ^ y);
   int xx = (x >> 31) & 1;
   int yy = (y >> 31) & 1;
-  
 
   int z = x + (~(y)) + 1;
   int a = ((z >> 31) & 1);
@@ -325,51 +382,27 @@ int isLessOrEqual(int x, int y)
  */
 int ilog2(int x)
 {
-  int oh,gogo,total;
-  x= x|(x>>16);
-  x= x|(x>>8);
-  x= x|(x>>4);
-  x= x|(x>>2);
-  x= x|(x>>1);
-  
+  // To find the first 1 is most important.
+  int oh, gogo, total;
+
+  // First, I'll put 1 to all bits after first 1
+  // If there is 1, all bits after that bit should be 1
+  x = x | (x >> 16);
+  x = x | (x >> 8);
+  x = x | (x >> 4);
+  x = x | (x >> 2);
+  x = x | (x >> 1);
+
+  // Not just count the number of 1's
+  // I use same algorithm in bitCount()
   oh = 1 + (1 << 8) + (1 << 16) + (1 << 24);
   gogo = (x & oh) + ((x >> 1) & oh) + ((x >> 2) & oh) + ((x >> 3) & oh) + ((x >> 4) & oh) + ((x >> 5) & oh) + ((x >> 6) & oh) + ((x >> 7) & oh);
-  total= ((gogo + (gogo >> 8) + (gogo >> 16) + (gogo >> 24)) & 63) ;
-  return total+total+(~total);
+  total = ((gogo + (gogo >> 8) + (gogo >> 16) + (gogo >> 24)) & 63);
 
-  
-  
-
+  //Do not forget to -1, using fact x+(~x)+1=0
+  return total + total + (~total);
 }
-/*
-int XXilog2(int x)
-{
-  int first,second,third,fourth,total;
-  first= ((x>>24)&0xff)<<24 ;
-  first= (first>>4) | first;
-  first= (first>>2) | first;
-  first= (first>>1) | first;
-  first= first&(0xff<<24);
-  second= (((x>>16)&0xff)<<16) | (first>>8) ;
-  second= (second>>4) | second;
-  second= (second>>2) | second;
-  second= (second>>1) | second;
-  second=second&(0xff<<16);
-  third= (((x>>8)&0xff)<<8) | (second>>8);
-  third=(third>>4) | third;
-  third=(third>>2) | third;
-  third=(third>>1) | third;
-  third=third&(0xff<<8);
-  fourth=(x&0xff) | (third>>8);
-  fourth= (fourth>>4)|fourth;
-  fourth= (fourth>>2)|fourth;
-  fourth= (fourth>>1)|fourth;
-  total=first+second+third+fourth;
-  printf("%02x %02x %02x %02x and total %02x\n",first,second,third,fourth,first+second+third+fourth);
 
-
-  return 2;
-}*/
 /* 
  * float_neg - Return bit-level equivalent of expression -f for
  *   floating point argument f.
@@ -384,13 +417,16 @@ int XXilog2(int x)
 
 unsigned float_neg(unsigned uf)
 {
-
+  //We have to change only signal bit (first one bit)
   if ((((uf >> 23) & 255) != 255) | (!(uf & 0x7fffff)))
   {
     unsigned tempuf;
+    // Only changing first bit of uf
     tempuf = (0x7fffffff & uf) + (0x80000000 & (~uf));
     return tempuf;
   }
+
+  //To deal with NAN
   return uf;
 }
 /* 
@@ -406,7 +442,8 @@ unsigned float_neg(unsigned uf)
 unsigned float_i2f(int x)
 {
   int sign, where;
-  unsigned y, z, sticky, where24, mantissa, ans;
+  unsigned y, z, sticky, where24, frac, ans;
+  //First we deal with zero
   if (!x)
   {
     return x;
@@ -414,6 +451,9 @@ unsigned float_i2f(int x)
   where = 31;
   sign = 0;
   y = x;
+
+  //If x is negative, just keep in mind its signal and
+  //calculate float of -x. Then merge it with its orginal signal
   if (x < 0)
   {
     sign = 1;
@@ -421,6 +461,7 @@ unsigned float_i2f(int x)
     y = -x;
   }
 
+  //I try to find the index of first bit with 1
   z = y;
   while (!(z & 0x80000000))
   {
@@ -432,13 +473,20 @@ unsigned float_i2f(int x)
 
   if (where > 23)
   {
+    //When where >23, we have to think about remainder(sticky)
+    //because frac part of float is only 23 bits.
 
+    // Let's say a,b are 23 and 24th bit, and k is rest bits after b
+    // If a=1,b=1(case 3) -> rounding up
+    // If b=0 (case 0 and 2 which are in default) -> stay ame
+    // If a=0,b=1(case 1) -> It depends on whether k is nonzero
+    // I got above idea from KLMS Q&A which are written by Klvchev, Kalomidin
+  
     unsigned atob = (y >> where24) & 3;
     switch (atob)
     {
     case 1:
     {
-
       if (where > 24)
       {
         int whereindex;
@@ -463,15 +511,18 @@ unsigned float_i2f(int x)
     default:
       break;
     }
-    mantissa = (((y >> (where - 23)) & (0x7fffff)) + sticky);
+    //Then, we have to add sticky to first 23 bits of frac
+    frac = (((y >> (where - 23)) & (0x7fffff)) + sticky);
   }
   else
   {
-
-    mantissa = ((y & ((1 << where) - 1)) << (23 - where));
+    // If where<=23, we don't have to think about remainder(sticky).
+    // Buy don't forget to shift it again to make first bit of fract should be
+    // just after exp part
+    frac = ((y & ((1 << where) - 1)) << (23 - where));
   }
 
-  ans = (sign << 31) + ((127 + where) << 23) + mantissa;
+  ans = (sign << 31) + ((127 + where) << 23) + frac;
 
   return ans;
 }
@@ -489,23 +540,30 @@ unsigned float_i2f(int x)
  */
 unsigned float_twice(unsigned uf)
 {
-  unsigned expp, mantissa;
+  
+  unsigned expp, frac;
+  // To deal with zero and 0x80000000
   if ((uf & 0x7fffffff) == 0)
   {
     return uf;
   }
-
+  //Get exp part of float
   expp = (uf >> 23) & 0xff;
-  mantissa = uf & 0x7fffff;
+  //Get frac part of float
+  frac = uf & 0x7fffff;
 
+  // To deal with special value
   if (expp == 0xff)
   {
     return uf;
   }
+  // To deal with denormalized value
+  // Only doubling frac part
   if (expp == 0)
   {
-    return uf + mantissa;
+    return uf + frac;
   }
-
+  // To deal with normalized value
+  // Only add 1 to exp part
   return uf + (1 << 23);
 }
